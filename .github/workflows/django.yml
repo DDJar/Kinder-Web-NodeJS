@@ -1,0 +1,30 @@
+name: Deploy to VPS v1.3
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to VPS
+        run: |
+          ssh -o StrictHostKeyChecking=no kinderabc@20.205.16.212 << 'EOF'
+            cd ~/workspace/KINDER
+            git pull
+            docker compose stop
+            docker rm $(docker ps -aq)
+            docker rmi $(docker images -q)
+            docker compose up -d
+          EOF

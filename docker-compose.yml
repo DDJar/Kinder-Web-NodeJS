@@ -1,0 +1,145 @@
+version: "3.8"
+services:
+  mongodb:
+    image: mongo:latest
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+  user:
+    build:
+      context: ./server/user-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    restart: always
+    depends_on:
+      - "mongodb"
+      - "rabbitmq"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/user-service
+      - MESSAGE_BROKER_URL=amqp://rabbitmq:5672
+      - GOOGLE_CALLBACK_URL=http://pviet.id.vn:85/users/auth/google/callback
+      - CLIENT_URL=https://kinder.id.vn/
+
+  notification:
+    build:
+      context: ./server/notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    depends_on:
+      - "mongodb"
+      - "rabbitmq"
+    environment:
+      - NODE_ENV=production
+      - MESSAGE_BROKER_URL=amqp://rabbitmq:5672
+      - CLIENT_URL=https://kinder.id.vn
+
+  academy:
+    build:
+      context: ./server/academy-service
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
+    depends_on:
+      - "mongodb"
+      - "rabbitmq"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/academy-service
+      - MESSAGE_BROKER_URL=amqp://rabbitmq:5672
+
+  communication:
+    build:
+      context: ./server/communication-service
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8085"
+    depends_on:
+      - "mongodb"
+      - "rabbitmq"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/communication-service
+      - MESSAGE_BROKER_URL=amqp://rabbitmq:5672
+
+  payment:
+    build:
+      context: ./server/payment-service
+      dockerfile: Dockerfile
+    ports:
+      - "8086:8086"
+    depends_on:
+      - "mongodb"
+      - "rabbitmq"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/payment-service
+      - MESSAGE_BROKER_URL=amqp://rabbitmq:5672
+      - CLIENT_URL=https://kinder.id.vn
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_SERVER_URL: "http://20.205.16.212:85"
+        REACT_APP_SERVER_URL_USER: "http://20.205.16.212:8083"
+    ports:
+      - "80:80"
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./server/nginx/nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "85:85"
+    depends_on:
+      - user
+      - notification
+      - academy
+      - communication
+      - payment
+      - client
+volumes:
+  mongo-data:
+  rabbitmq_data:
+
+  # command run : docker compose up -d
+  # command stop : docker compose stop
+  # remove all containers : docker rm $(docker ps -aq)
+  # remove all images : docker rmi $(docker images -q)
+  # remove all volumes : docker volume rm $(docker volume ls -q)
+
+  # Use Gitbase:
+  # docker compose stop && docker rm $(docker ps -aq) && docker rmi $(docker images -q) && docker volume rm $(docker volume ls -q) && docker compose up -d
+
+  # No remove Volume:
+  # docker compose stop && docker rm $(docker ps -aq) && docker rmi $(docker images -q) && docker compose up -d
+
+  # create tag for iamges
+  # docker tag kinder-client:latest hoangy761/kinder:client
+  # docker tag kinder-notification:latest hoangy761/kinder:notification
+  # docker tag kinder-payment:latest hoangy761/kinder:payment
+  # docker tag kinder-communication:latest hoangy761/kinder:communication
+  # docker tag kinder-academy:latest hoangy761/kinder:academy
+  # docker tag kinder-user:latest hoangy761/kinder:user
+  # docker tag nginx:latest hoangy761/kinder:nginx
+  # docker tag mongo:latest hoangy761/kinder:mongo
+
+  # Step 2 : Push docker hub
+  # docker push hoangy761/kinder:client
+  # docker push hoangy761/kinder:notification
+  # docker push hoangy761/kinder:payment
+  # docker push hoangy761/kinder:communication
+  # docker push hoangy761/kinder:academy
+  # docker push hoangy761/kinder:user
+  # docker push hoangy761/kinder:nginx
+  # docker push hoangy761/kinder:mongo
