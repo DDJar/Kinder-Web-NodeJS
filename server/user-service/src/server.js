@@ -11,7 +11,6 @@ import config from "./config/config.js";
 import paymentRouter from "./routes/paymentRoutes.js";
 import transportationRouter from "./routes/transportationRoutes.js";
 import {initConnectionRabbitMQ} from "./services/RabbitMQService/init.js";
-
 dotenv.config();
 
 const app = express();
